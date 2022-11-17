@@ -1,0 +1,241 @@
+---
+title: "R练习题"
+author: "mj"
+date: "2022-11-11"
+output: html_document
+---
+
+## dplyr数据处理
+
+**Question one:** **数据整理：**加载class数据表，
+
+```{r data d.class, include=FALSE}
+library(tidyverse)
+library(readr)
+d.class <- read_csv('E:\\00study\\MJ\\Rlearning\\R.DATA\\class.csv',locale = locale(encoding = 'GBK'))
+```
+
+（1）查看数据表第3：8行；
+
+```{r}
+d.class %>% 
+  slice(3:8) %>% 
+  knitr::kable()
+```
+
+（2）筛选年龄14岁以下的女生信息，并按体重降序展示数据子数据框；
+
+```{r}
+d.class %>% 
+  filter(sex=='F',age<14) %>% 
+  arrange(desc(weight)) %>% 
+  knitr::kable()
+```
+
+（3）从数据表中随机无放回抽取7行；
+
+```{r}
+d.class %>% 
+  sample_n(7,replace = FALSE) %>% 
+  knitr::kable()
+```
+
+（4）筛选出性别与年龄的所有不同组合，并保留数据框其它变量；
+
+```{r}
+d.class %>% 
+  distinct(sex,age,.keep_all = TRUE) %>% 
+  knitr::kable()
+```
+
+（5）提取名字、性别、身高列，并对身高列重命名为H；
+
+```{r}
+d.class %>% 
+  select(name,sex,height) %>% 
+  rename('H'='height') %>% 
+  knitr::kable()
+```
+
+（6）在数据表中新增一列，计算RWH即体重和身高之比；
+
+```{r}
+d.class %>% 
+  mutate(RWH=weight/height) %>% 
+  knitr::kable()
+```
+
+**Question two:** **数据汇总：**加载cancer数据表，
+
+```{r data cancer, include=FALSE}
+d.cancer <- read_csv('E:\\00study\\MJ\\Rlearning\\R.DATA\\cancer.csv',locale = locale(encoding = 'GBK'))
+```
+
+（1）统计男性和女性中各种病理的人数；
+
+```{r}
+d.cancer %>% 
+  group_by(sex) %>% 
+  summarise(
+    count=n()
+  ) %>% 
+  knitr::kable()
+```
+
+（2）统计男性和女性中，v0和v1两变量的均值和标准差；
+
+```{r}
+d.cancer %>% 
+  group_by(sex) %>%
+  summarise(
+    v0.avg=mean(v0),
+    v0.std=sd(v0),
+    v1.avg=mean(v1),
+    v1.std=mean(v1)
+  ) %>% 
+  knitr::kable()
+```
+
+```{r}
+d.cancer %>% 
+  group_by(sex) %>% 
+  summarise_at(
+    c('v0','v1'),
+    list(avg=~mean(.),std=~sd(.)),
+    na.rm=TRUE
+  ) %>% 
+  knitr::kable()
+```
+
+（3）统计表格中所有数值型变量的均值和标准差；
+
+```{r}
+d.cancer %>% 
+  summarise_if(
+    is.numeric,
+    list(avg=~mean(.),std=~sd(.)),
+    na.rm=TRUE
+    ) %>% 
+  knitr::kable()
+```
+
+（4）找出男性和女性中，疗前体积（v0）排名在前两名的信息；
+
+```{r}
+d.cancer %>% 
+  group_by(sex) %>% 
+  filter(rank(v0)<=2) %>% 
+  knitr::kable()
+```
+
+（5）按照性别和病理类别交叉分类计算频数后求所有病人的总人数；
+
+```{r}
+d.cancer %>% 
+  group_by(sex,type) %>% 
+  summarise(
+    count=n(),
+    v0.avg=mean(v0),
+    v1.mean=mean(v1)
+  ) %>% 
+  knitr::kable()
+```
+
+## 绘图
+
+加载数据：
+
+```{r include=FALSE}
+library(readr)
+d.cancer <- read_csv("E:\\00study\\MJ\\Rlearning\\R.DATA\\cancer.csv",
+                     locale=locale(encoding="GBK"))
+d.class <- read_csv("E:\\00study\\MJ\\Rlearning\\R.DATA\\class.csv",
+                    locale=locale(encoding="GBK"))
+```
+
+**条形图：**使用cancer表数据
+
+（1）统计表中男女个数并用条形图表示
+
+```{r}
+S <- table(d.cancer$sex)
+barplot(S)
+```
+
+（2）统计性别与病理类型交叉分组的频数并用条形图表示（堆积&不堆积）
+
+```{r}
+F <- table(d.cancer$sex,d.cancer$type)
+barplot(F,beside = T)
+```
+
+**直方图和密度曲线：**
+
+产生1000个服从N(0,1)分布的随机数，绘制其分布直方图并添加概率密度曲线：
+
+```{r}
+set.seed(1)
+Z <- rnorm(1000,0,1)
+hist(Z,freq = FALSE)
+curve(dnorm(x,mean = mean(Z),sd=sd(Z)),add = TRUE)
+```
+
+**箱线图：**使用cancer表数据
+
+使用箱线图展示治疗前后两组数据的分布情况:
+
+```{r}
+boxplot(list('疗前'=d.cancer$v0,'疗后'=d.cancer$v1))
+```
+
+使用箱线图展示男性和女性治疗前数据的分布情况：
+
+```{r}
+boxplot(d.cancer$v0~d.cancer$sex)
+```
+
+**散点图：**使用class数据表
+
+绘制身高和体重之间的散点图：
+
+```{r}
+plot(d.class$weight,d.class$height)
+```
+
+**曲线图：**
+
+在同一个坐标轴中绘制sin(x)和tan(x)两条曲线并添加参考线：
+
+```{r}
+x <- seq(0,100,length=200);
+curve(sin(x),xlim = c(-2*pi,2*pi),ylim=c(-5,5))
+curve(tan(x),add = T)
+abline(h=0)
+```
+
+## 分布、随机数
+
+```{r}
+# 随机数生成
+set.seed(1)
+x1 <- runif(20,1,2);x1##均匀分布
+x2 <- rbinom(20,10,0.9);x2##二项分布
+x3 <- rnorm(20,2,1);x3##正态分布
+x4 <- rexp(20,1/5);x4##指数分布,第二个参数是均值倒数
+x5 <- rchisq(20,2);x5##卡方分布(df)
+x6 <- rt(20,2);x6##t分布
+x7 <- rf(20,1,2);x7##F分布
+x8 <- rgeom(20,0.5);x8##几何分布
+```
+
+**随机抽样：**
+
+```{r}
+##产生1:100中的随机数
+set.seed(1)
+sample(100)
+sample(1:100,50,replace = T)
+##随机抽样
+Y <- sample(c('饼干','曲奇','奶酥'),100,prob = c(0.5,0.4,0.1),replace = T)
+table(Y)
+```
